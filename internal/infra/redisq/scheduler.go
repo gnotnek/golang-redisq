@@ -30,7 +30,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	for {
 		if err := s.moveDue(ctx); err != nil {
 			/* log */
-			log.Ctx(ctx).Err(err).Msgf("something went wrong: %s", err)
+			log.Ctx(ctx).Err(err).Msgf("something went wrong on scheduler: %s", err)
 			return err
 		}
 		select {

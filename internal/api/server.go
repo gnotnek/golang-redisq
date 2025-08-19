@@ -30,7 +30,8 @@ func NewServer() *Server {
 	cfg := config.Load()
 
 	cli := redisq.New(cfg.Redis)
-	if err := cli.Init(ctx); err != nil {
+
+	if err := cli.Connect(ctx); err != nil {
 		log.Ctx(ctx).Fatal().Msgf("something went wrong: %s", err)
 	}
 

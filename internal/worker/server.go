@@ -10,6 +10,7 @@ import (
 	"redisq/internal/domain"
 	"redisq/internal/infra/redisq"
 	"redisq/internal/usecase"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,7 +31,10 @@ func Run(cfg Config) error {
 	defer stop()
 
 	if err := cli.Init(ctx); err != nil {
-		return err
+		if !strings.Contains(err.Error(), "BUSYGROUP") {
+			return err
+		}
+		log.Info().Msg("Consumer group already exists, continuing...")
 	}
 
 	// Run scheduler

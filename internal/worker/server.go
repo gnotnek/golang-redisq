@@ -17,13 +17,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Config struct {
+type WorkerConfig struct {
 	ConsumerName string
 	BaseBackoff  time.Duration
 	MaxBackoff   time.Duration
 }
 
-func Run(cfg Config) error {
+func Run(cfg WorkerConfig) error {
 	appCfg := config.Load()
 	cli := redisq.New(appCfg.Redis)
 
@@ -60,5 +60,6 @@ func Run(cfg Config) error {
 		return nil
 	}
 
+	log.Info().Msgf("the worker are working")
 	return consumer.Run(ctx, handler)
 }

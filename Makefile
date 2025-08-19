@@ -12,7 +12,7 @@ build:
 run-worker: build
 	$(APP) worker
 
-# Run API (if you add cobra command later)
+# Run API
 .PHONY: run-api
 run-api: build
 	$(APP) api

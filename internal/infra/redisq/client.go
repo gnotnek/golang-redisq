@@ -54,9 +54,4 @@ func (c *Client) Init(ctx context.Context) error {
 	return nil
 }
 
-func isGroupExists(err error) bool {
-	return err != nil && (err.Error() == "BUSYGROUP Consumer Group namealready exists" ||
-		err.Error() == "BUSYGROUP Consumer Group namealready exists for this key")
-}
-
 func nowMs() float64 { return float64(time.Now().UnixMilli()) }

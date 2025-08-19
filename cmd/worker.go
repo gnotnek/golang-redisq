@@ -18,7 +18,7 @@ func workerCmd() *cobra.Command {
 		Use:   "worker",
 		Short: "Start worker server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return worker.Run(worker.Config{
+			return worker.Run(worker.WorkerConfig{
 				ConsumerName: consumerName,
 				BaseBackoff:  baseBackoff,
 				MaxBackoff:   maxBackoff,

@@ -6,6 +6,8 @@ import (
 	"redisq/internal/ports"
 	"redisq/pkg/backoff"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Handler func(ctx context.Context, t domain.Task) error
@@ -27,9 +29,11 @@ func (c Consumer) Run(ctx context.Context, handle Handler) error {
 
 		t, id, err := c.Q.Claim(ctx, c.ConsumerName, 5*time.Second)
 		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("claim failed")
 			continue
 		}
 		if t == nil {
+			log.Ctx(ctx).Debug().Msg("no task claimed")
 			continue
 		}
 

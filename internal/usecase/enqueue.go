@@ -7,7 +7,9 @@ import (
 	"time"
 )
 
-type Enqueuer struct{ Q ports.Queue }
+type Enqueuer struct {
+	Q ports.Queue
+}
 
 func (e Enqueuer) Now(ctx context.Context, t domain.Task) (string, error) {
 	if t.MaxAttempts == 0 {

@@ -3,7 +3,6 @@ package redisq
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"redisq/internal/domain"
 	"redisq/internal/ports"
 	"strconv"
@@ -27,16 +26,16 @@ func NewScheduler(c *Client, interval time.Duration) *Scheduler {
 func (s *Scheduler) Run(ctx context.Context) error {
 	ticker := time.NewTicker(s.Interval)
 	defer ticker.Stop()
+
 	for {
-		if err := s.moveDue(ctx); err != nil {
-			/* log */
-			log.Ctx(ctx).Err(err).Msgf("something went wrong on scheduler: %s", err)
-			return err
-		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
+			if err := s.moveDue(ctx); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("scheduler moveDue failed")
+				// Don't exit, just log and continue
+			}
 		}
 	}
 }
@@ -49,22 +48,31 @@ func (s *Scheduler) moveDue(ctx context.Context) error {
 		Offset: 0,
 		Count:  128,
 	}).Result()
-
-	if err != nil || len(ids) == 0 {
-		return fmt.Errorf("something happen")
+	if err != nil {
+		return err // only return actual Redis error
+	}
+	if len(ids) == 0 {
+		return nil // nothing to move this tick
 	}
 
 	for _, id := range ids {
 		key := "task:" + id
-		h, _ := s.C.Rdb.HGetAll(ctx, key).Result()
+		h, err := s.C.Rdb.HGetAll(ctx, key).Result()
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Str("task_id", id).Msg("failed to fetch task hash")
+			continue
+		}
 
 		t := domain.Task{ID: id, Type: h["type"], Status: domain.StatusQueued}
 		b, _ := json.Marshal(t)
 
 		if _, err := s.C.Rdb.XAdd(ctx, &redis.XAddArgs{
 			Stream: s.C.Cfg.StreamKey,
-			Values: map[string]interface{}{"task": b}}).Result(); err == nil {
+			Values: map[string]interface{}{"task": b},
+		}).Result(); err == nil {
 			_ = s.C.Rdb.ZRem(ctx, s.C.Cfg.ScheduledZSet, id).Err()
+		} else {
+			log.Ctx(ctx).Error().Err(err).Str("task_id", id).Msg("failed to XADD task")
 		}
 	}
 	return nil

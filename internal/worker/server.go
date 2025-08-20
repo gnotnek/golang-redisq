@@ -60,6 +60,6 @@ func Run(cfg WorkerConfig) error {
 		return nil
 	}
 
-	log.Info().Msgf("the worker are working")
+	log.Info().Msgf("Worker %s started. Waiting for tasks...", cfg.ConsumerName)
 	return consumer.Run(ctx, handler)
 }

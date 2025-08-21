@@ -25,6 +25,7 @@ type WorkerConfig struct {
 
 func Run(cfg WorkerConfig) error {
 	appCfg := config.Load()
+	log.Info().Msgf("Worker using stream: %s, group: %s", appCfg.Redis.StreamKey, appCfg.Redis.Group)
 	cli := redisq.New(appCfg.Redis)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

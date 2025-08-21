@@ -28,6 +28,7 @@ func (c Consumer) Run(ctx context.Context, handle Handler) error {
 		}
 
 		t, id, err := c.Q.Claim(ctx, c.ConsumerName, 5*time.Second)
+		log.Ctx(ctx).Info().Msgf("claimed task: %v, id: %s, err: %v", t, id, err)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Msg("claim failed")
 			continue

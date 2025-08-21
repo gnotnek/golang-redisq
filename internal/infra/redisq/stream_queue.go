@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog/log"
 )
 
 var _ ports.Queue = (*Client)(nil)
@@ -22,16 +23,17 @@ func (c *Client) Enqueue(ctx context.Context, t domain.Task) (string, error) {
 
 	t.Status = domain.StatusQueued
 	t.CreatedAt = time.Now()
-	b, _ := json.Marshal(t)
+	if err := c.SaveState(ctx, t); err != nil {
+		return "", err
+	}
 	id, err := c.Rdb.XAdd(ctx, &redis.XAddArgs{
 		Stream: c.Cfg.StreamKey,
-		Values: map[string]interface{}{"task": b},
+		Values: map[string]interface{}{"task_id": t.ID},
 	}).Result()
 
 	if err != nil {
 		return "", err
 	}
-	_ = c.SaveState(ctx, t)
 	return id, nil
 }
 
@@ -53,13 +55,15 @@ func (c *Client) EnqueueDelayed(ctx context.Context, t domain.Task, runAt time.T
 }
 
 func (c *Client) Claim(ctx context.Context, consumer string, block time.Duration) (*domain.Task, string, error) {
-	res, err := c.Rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	args := &redis.XReadGroupArgs{
 		Group:    c.Cfg.Group,
 		Consumer: consumer,
 		Streams:  []string{c.Cfg.StreamKey, ">"},
 		Count:    1,
 		Block:    block,
-	}).Result()
+	}
+	log.Ctx(ctx).Info().Msgf("XReadGroup args: %+v", args)
+	res, err := c.Rdb.XReadGroup(ctx, args).Result()
 
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
@@ -73,17 +77,15 @@ func (c *Client) Claim(ctx context.Context, consumer string, block time.Duration
 	}
 
 	msg := res[0].Messages[0]
-	raw := msg.Values["task"]
-	var t domain.Task
-	switch v := raw.(type) {
-	case string:
-		_ = json.Unmarshal([]byte(v), &t)
-	case []byte:
-		_ = json.Unmarshal(v, &t)
-	default:
-		return nil, "", fmt.Errorf("unexpected task type: %T", v)
+	taskID, ok := msg.Values["task_id"].(string)
+	if !ok {
+		return nil, "", fmt.Errorf("task_id not found in message")
 	}
-	return &t, msg.ID, nil
+	t, err := c.Get(ctx, taskID)
+	if err != nil {
+		return nil, "", err
+	}
+	return t, msg.ID, nil
 }
 
 func (c *Client) Ack(ctx context.Context, streamID string) error {
@@ -114,6 +116,8 @@ func (c *Client) ToDLQ(ctx context.Context, streamID string, t domain.Task, reas
 }
 
 func (c *Client) SaveState(ctx context.Context, t domain.Task) error {
+	b, _ := json.Marshal(t)
+	log.Ctx(ctx).Info().RawJSON("task", b).Msg("saving task state")
 	key := fmt.Sprintf("task:%s", t.ID)
 	m := map[string]any{
 		"status":       string(t.Status),

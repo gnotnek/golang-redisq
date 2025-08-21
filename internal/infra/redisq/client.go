@@ -17,6 +17,7 @@ type Client struct {
 }
 
 func New(cfg config.Redis) *Client {
+	log.Info().Msgf("connecting to redis at %s", cfg.Addr)
 	c := redis.NewClient(&redis.Options{
 		Addr:     cfg.Addr,
 		Password: cfg.Password,

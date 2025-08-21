@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"redisq/internal/api"
+	"redisq/internal/config"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
@@ -12,6 +15,9 @@ func apiCmd() *cobra.Command {
 		Use:   "api",
 		Short: "Start API server",
 		Run: func(cmd *cobra.Command, args []string) {
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			cfg := config.Load()
+			log.Info().Msgf("API server using stream: %s, group: %s", cfg.Redis.StreamKey, cfg.Redis.Group)
 			server := api.NewServer()
 			server.Run(port)
 		},
